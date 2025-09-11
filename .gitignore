@@ -27,3 +27,5 @@ barrier
 *.pcap
 TAGS
 
+# macOS
+.DS_Store
