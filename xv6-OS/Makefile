@@ -195,7 +195,8 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
-	$U/_sleep\	# Lab Utilities -- Sleep
+	$U/_sleep\
+	# Lab Utilities -- Sleep
 
 
 
