@@ -196,9 +196,7 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_sleep\
-	# Lab Utilities -- Sleep
-
-
+	$U/_pingpong\
 
 
 ifeq ($(LAB),syscall)
