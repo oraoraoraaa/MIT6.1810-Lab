@@ -1,6 +1,5 @@
 /* Lab Utilities -- Sleep */
 #include "kernel/types.h"
-
 #include "kernel/stat.h"
 #include "user/user.h"
 
@@ -13,7 +12,7 @@ main (int argc, char *argv[]) /* argv[] stores pointers! */
       exit (1);
     }
 
-  int n = atoi (argv[1]);
+  int n = atoi_CheckIsNumber (argv[1]);
   pause (n);
   exit (0);
 };
