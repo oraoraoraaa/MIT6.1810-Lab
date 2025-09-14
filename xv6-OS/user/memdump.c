@@ -2,64 +2,103 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
-void memdump(char *fmt, char *data);
+void memdump (char *fmt, char *data);
 
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
-  if(argc == 1){
-    printf("Example 1:\n");
-    int a[2] = { 61810, 2025 };
-    memdump("ii", (char*) a);
-    
-    printf("Example 2:\n");
-    memdump("S", "a string");
-    
-    printf("Example 3:\n");
-    char *s = "another";
-    memdump("s", (char *) &s);
+  if (argc == 1)
+    {
+      printf ("Example 1:\n");
+      int a[2] = { 61810, 2025 };
+      memdump ("ii", (char *)a);
 
-    struct sss {
-      char *ptr;
-      int num1;
-      short num2;
-      char byte;
-      char bytes[8];
-    } example;
-    
-    example.ptr = "hello";
-    example.num1 = 1819438967;
-    example.num2 = 100;
-    example.byte = 'z';
-    strcpy(example.bytes, "xyzzy");
-    
-    printf("Example 4:\n");
-    memdump("pihcS", (char*) &example);
-    
-    printf("Example 5:\n");
-    memdump("sccccc", (char*) &example);
-  } else if(argc == 2){
-    // format in argv[1], up to 512 bytes of data from standard input.
-    char data[512];
-    int n = 0;
-    memset(data, '\0', sizeof(data));
-    while(n < sizeof(data)){
-      int nn = read(0, data + n, sizeof(data) - n);
-      if(nn <= 0)
-        break;
-      n += nn;
+      printf ("Example 2:\n");
+      memdump ("S", "a string");
+
+      printf ("Example 3:\n");
+      char *s = "another";
+      memdump ("s", (char *)&s);
+
+      struct sss
+      {
+        char *ptr;
+        int num1;
+        short num2;
+        char byte;
+        char bytes[8];
+      } example;
+
+      example.ptr = "hello";
+      example.num1 = 1819438967;
+      example.num2 = 100;
+      example.byte = 'z';
+      strcpy (example.bytes, "xyzzy");
+
+      printf ("Example 4:\n");
+      memdump ("pihcS", (char *)&example);
+
+      printf ("Example 5:\n");
+      memdump ("sccccc", (char *)&example);
     }
-    memdump(argv[1], data);
-  } else {
-    printf("Usage: memdump [format]\n");
-    exit(1);
-  }
-  exit(0);
+  else if (argc == 2)
+    {
+      // format in argv[1], up to 512 bytes of data from standard input.
+      char data[512];
+      int n = 0;
+      memset (data, '\0', sizeof (data));
+      while (n < sizeof (data))
+        {
+          int nn = read (0, data + n, sizeof (data) - n);
+          if (nn <= 0)
+            break;
+          n += nn;
+        }
+      memdump (argv[1], data);
+    }
+  else
+    {
+      printf ("Usage: memdump [format]\n");
+      exit (1);
+    }
+  exit (0);
 }
 
 void
-memdump(char *fmt, char *data)
+memdump (char *fmt, char *data)
 {
-  // Your code here.
-
+  char *data_index = data;
+  while (*fmt)
+    {
+      switch (*fmt)
+        {
+        case 'i':
+          fprintf (1, "%d\n", *(int *)data_index);
+          data_index += sizeof (int);
+          break;
+        case 'p':
+          fprintf (1, "%lx\n", *(long *)data_index);
+          data_index += sizeof (long);
+          break;
+        case 'h':
+          fprintf (1, "%d\n", *(short *)data_index);
+          data_index += sizeof (short);
+          break;
+        case 'c':
+          fprintf (1, "%c\n", *data_index);
+          data_index += sizeof (char);
+          break;
+        case 's':
+          fprintf (1, "%s\n", *(char **)data_index);
+          data_index += sizeof (char *);
+          break;
+        case 'S':
+          fprintf (1, "%s\n", data_index);
+          return;
+        default:
+          fprintf (2, "memdump: unknown format character %c.\n", *fmt);
+          break;
+        }
+      fmt++;
+    }
 }
