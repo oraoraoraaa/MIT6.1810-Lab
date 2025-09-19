@@ -3,14 +3,34 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
+#include "kernel/param.h"
 
 char *fmtname (char *path);
-void find (char *path, char *name);
+void find (char *path, char *name, int exec_flag, char **exec_argv);
 
 int
 main (int argc, char *argv[])
 {
-  find (argv[1], argv[2]);
+  int exec_flag = 0;
+
+  if (argc < 3)
+    {
+      printf ("Usage: find <directory> <target name> [-exec <command> "
+              "[argument]...] \n");
+    }
+  if (argc > 3)
+    {
+      if (strcmp (argv[3], "-exec") == 0)
+        {
+          exec_flag = 1;
+        }
+      else
+        {
+          printf ("Usage: find <directory> <target name> [-exec <command> "
+                  "[argument]...] \n");
+        }
+    }
+  find (argv[1], argv[2], exec_flag, argv + 4);
   exit (0);
 }
 
@@ -27,7 +47,7 @@ fmtname (char *path)
 }
 
 void
-find (char *path, char *name)
+find (char *path, char *name, int exec_flag, char **exec_argv)
 {
   if (strlen (name) > DIRSIZ)
     {
@@ -58,7 +78,36 @@ find (char *path, char *name)
     case T_FILE:
       if (strcmp (fmtname (path), name) == 0)
         {
-          printf ("%s\n", path);
+          if (exec_flag)
+            {
+              if (fork () == 0)
+                {
+                  int i = 0;
+                  while (exec_argv[i] != 0)
+                    {
+                      i++;
+                    }
+
+                  if (i > MAXARG)
+                    {
+                      printf ("find: too many arguments after -exec.\n");
+                    }
+                  char *new_argv[i + 2];
+                  for (int j = 0; j < i; j++)
+                    {
+                      new_argv[j] = exec_argv[j];
+                    }
+                  new_argv[i] = path;
+                  new_argv[i + 1] = 0;
+                  exec (new_argv[0], new_argv);
+                  printf ("find: exec %s failed.\n", new_argv[0]);
+                }
+              wait (0);
+            }
+          else
+            {
+              printf ("%s\n", path);
+            }
         };
       break;
 
@@ -82,7 +131,7 @@ find (char *path, char *name)
 
           memmove (p, de.name, DIRSIZ);
           p[DIRSIZ] = 0;
-          find (buf, name);
+          find (buf, name, exec_flag, exec_argv);
         }
       break;
     default:
