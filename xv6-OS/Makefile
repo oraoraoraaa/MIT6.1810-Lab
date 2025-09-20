@@ -199,6 +199,7 @@ UPROGS=\
 	$U/_pingpong\
 	$U/_sixfive\
 	$U/_find\
+	$U/_uptime\
 
 
 
