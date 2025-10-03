@@ -9,7 +9,7 @@ This repository is a track of process I walked through during my study of the MI
 
 The repository itself contains all the process for all the labs. Clone this repository, and switch branches to see the detailed modification process.
 
-The wiki for this repository contains some notes and complementary explanation and exploration. Move to the [wiki page]() for more information.
+The wiki for this repository contains some notes and complementary explanation and exploration. Move to the [wiki page](https://github.com/oraoraoraaa/MIT6.1810-Lab/wiki) for more information.
 
 # Repository Structure
 ## Folders
