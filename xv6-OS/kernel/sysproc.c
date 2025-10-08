@@ -123,9 +123,12 @@ sys_interpose (void)
 {
   struct proc *p = myproc ();
   int mask;
+  char buf[MAXPATH];
 
   argint (0, &mask);
+  argstr (1, buf, MAXPATH);
 
   p->maskedSyscall = mask;
+  strncpy (p->allowedPath, buf, MAXPATH);
   return 0;
 }

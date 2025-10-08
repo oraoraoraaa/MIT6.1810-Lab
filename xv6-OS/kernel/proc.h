@@ -117,5 +117,6 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  uint32 maskedSyscall; // system call bit mask
+  uint32 maskedSyscall;      // system call bit mask
+  char allowedPath[MAXPATH]; // allowed path for masked system call
 };

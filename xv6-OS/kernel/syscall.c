@@ -134,11 +134,21 @@ syscall (void)
 
   if (num > 0 && num < NELEM (syscalls) && syscalls[num])
     {
-      // Check if the requesting system call is masked.
-      if ((p->maskedSyscall >> num) & 1)
+      // Check if the requesting system call is masked
+      // Check allowed path for open and exec
+      if ((num == SYS_open || num == SYS_exec)
+          && ((p->maskedSyscall >> num) & 1))
         {
-          p->trapframe->a0 = -1;
-          return;
+          char buf[MAXPATH];
+          argstr (0, buf, MAXPATH);
+          if (!strncmp (buf, p->allowedPath, MAXPATH))
+            {
+            }
+          else
+            {
+              p->trapframe->a0 = -1;
+              return;
+            }
         }
 
       // Use num to lookup the system call function for num, call it,
