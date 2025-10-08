@@ -117,3 +117,15 @@ sys_freemem (void)
 {
   return freemem ();
 }
+
+uint64
+sys_interpose (void)
+{
+  struct proc *p = myproc ();
+  int mask;
+
+  argint (0, &mask);
+
+  p->maskedSyscall = mask;
+  return 0;
+}

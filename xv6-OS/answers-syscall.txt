@@ -1,0 +1,41 @@
+1. Looking at the backtrace output, which function called syscall?
+usertrap()
+
+2. What is the value of p->trapframe->a7 and what does that value represent?
+(Hint: look at user/init.c, the first user program xv6 starts, and its compiled assembly user/init.asm.)
+
+p->trapframe->a7: 0xf; It represents SYS_open. 
+
+int
+main(void)
+{
+  int pid, wpid;
+
+  if(open("console", O_RDWR) < 0){
+
+00000000000003b4 <open>:
+.global open
+open:
+ li a7, SYS_open
+ 3b4:	48bd                	li	a7,15
+ ecall
+ 3b6:	00000073          	ecall
+ ret
+ 3ba:	8082                	ret
+
+ 3. What was the previous mode that the CPU was in?
+ Machine mode.
+
+ 4. Write down the assembly instruction the kernel is panicing at. Which register corresponds to the variable num?
+ num = *(int *)0;
+    80001d4e:	00002683          	lw	a3,0(zero) # 0 <_entry-0x80000000>
+
+ Register: a3
+
+ 5. Why does the kernel crash? 
+ Hint: look at figure 3-3 in the text; is address 0 mapped in the kernel address space? 
+ Is that confirmed by the value in scause above? (See description of scause in RISC-V privileged instructions)
+
+ Address 0 isn't mapped in the kernel address space, and the kernel cannot load the page.
+ scause=0xd, which indicates load page fault. It's confirmed. 
+ (Check page 70 of riscv-privileged book)

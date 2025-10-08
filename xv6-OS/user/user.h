@@ -25,6 +25,7 @@ char *sys_sbrk (int, int);
 int pause (int);
 int uptime (void);
 int freemem (void);
+int interpose (int, char *);
 
 // ulib.c
 int stat (const char *, struct stat *);

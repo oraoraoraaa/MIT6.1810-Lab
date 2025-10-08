@@ -110,3 +110,8 @@ freemem:
  li a7, SYS_freemem
  ecall
  ret
+.global interpose
+interpose:
+ li a7, SYS_interpose
+ ecall
+ ret
