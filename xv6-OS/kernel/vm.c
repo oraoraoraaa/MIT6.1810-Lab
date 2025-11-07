@@ -143,8 +143,39 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
 void
+vmprint_helper(pagetable_t pagetable, int depth, uint64 va_base) {
+  for (int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+
+    if ((pte & PTE_V) != 0) {
+      // format ..
+      for (int j = 0; j <= depth; j++){
+        printf(" ..");
+      }
+
+      // calculate shift and va
+      // Level 2 (depth 0): 12 + 9*2 = 30
+      // Level 1 (depth 1): 12 + 9*1 = 21
+      // Level 0 (depth 2): 12 + 9*0 = 12
+      int shift = 12 + 9 * (2 - depth);
+      uint64 va = va_base | (i << shift);
+
+      printf("%p: pte %p pa %p\n", (void *)va, (void *)pte, (void *)PTE2PA(pte));
+    
+      // if not a leaf node
+      if ((pte & PTE_V) && ((pte & (PTE_R | PTE_W | PTE_X)) == 0)){
+        pagetable_t child = (pagetable_t)PTE2PA(pte);
+        vmprint_helper(child, depth + 1, va);
+      }
+    }
+  }
+}
+
+void
 vmprint(pagetable_t pagetable) {
   // your code here
+  printf("page table %p\n", pagetable);
+  vmprint_helper(pagetable, 0, 0);
 }
 #endif
 
