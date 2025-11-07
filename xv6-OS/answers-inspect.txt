@@ -1,0 +1,78 @@
+Output:
+
+print_pgtbl starting
+va 0x0 pte 0x21FD505B pa 0x87F54000 perm 0x5B
+va 0x1000 pte 0x21FC885B pa 0x87F22000 perm 0x5B
+va 0x2000 pte 0x21FC7C17 pa 0x87F1F000 perm 0x17
+va 0x3000 pte 0x21FC7807 pa 0x87F1E000 perm 0x7
+va 0x4000 pte 0x21FC80D7 pa 0x87F20000 perm 0xD7
+va 0x5000 pte 0x0 pa 0x0 perm 0x0
+va 0x6000 pte 0x0 pa 0x0 perm 0x0
+va 0x7000 pte 0x0 pa 0x0 perm 0x0
+va 0x8000 pte 0x0 pa 0x0 perm 0x0
+va 0x9000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFF6000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFF7000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFF8000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFF9000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFFA000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFFB000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFFC000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFFD000 pte 0x0 pa 0x0 perm 0x0
+va 0x3FFFFFE000 pte 0x21FCC8C7 pa 0x87F32000 perm 0xC7
+va 0x3FFFFFF000 pte 0x2000184B pa 0x80006000 perm 0x4B
+print_pgtbl: OK
+
+Flag information:
+
+#define PTE_V (1L << 0) // valid
+#define PTE_R (1L << 1)
+#define PTE_W (1L << 2)
+#define PTE_X (1L << 3)
+#define PTE_U (1L << 4) // user can access
+
+Answer:
+
+va low to high (0x0 - 0x9000)
+
+1. 0x0 and 0x1000
+
+- Logical Meaning: Text section, storing actual instructions and strings.
+- Permission: 0x5B - 00 0101 1011 (VR-XU)
+
+2. 0x2000
+
+- Logical Meaning: Data section, storing initialized global/static variables.
+- Permission: 0x17 - 00 0001 0111 (VRW-U)
+
+3. 0x3000
+
+- Logical Meaning: Guard page that user program cannot access. Prevent user stack overflow.
+- Permission: 0x7 - 00 0000 0111 (VRW--)
+
+4. 0x4000
+
+- Logical Meaning: User stack (1 page size).
+- Permission: 0xD7 - 00 1101 0111 (VRW-U)
+
+5. 0x5000 - 0x9000
+
+- Logical Meaning: Heap (unmapped memory, doesn't exist for now)
+- Permission: 0
+
+va high to low (0x3FFFFFF000 - 0x3FFFFF6000)
+
+1. 0x3FFFFFF000
+
+- Logical Meaning: Trampoline (1 page size)
+- Permission: 0x4B - 00 0100 1011 (VR-X-)
+
+2. 0x3FFFFFE000
+
+- Logical Meaning: Trapframe (1 page size)
+- Permission: 0xC7 - 00 1100 0111 (VRW--)
+
+3. 0x3FFFFFD000 - 0x3FFFFF6000
+
+- Logical Meaning: Unused (unmapped memory, doesn't exist for now)
+- Permission: 0
