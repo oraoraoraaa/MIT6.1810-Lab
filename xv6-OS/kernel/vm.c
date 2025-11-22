@@ -346,7 +346,8 @@ is_superpage (pagetable_t pagetable, uint64 va)
 }
 
 // Demote superpage to 512 normal pages when partially unmapped.
-// pte_l1 in va points to the actual 2MB memory chunk
+// pte_l1 in va points to the actual 2MB memory chunk.
+// va doesn't need to be superpage aligned.
 int
 superpg_demotion (pagetable_t pagetable, uint64 va)
 {
@@ -488,6 +489,9 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   //         debug_counter_superpg, debug_counter_pg);
 }
 
+// Allocate and map a superpage. spgstart is the starting
+// virtual address of the superpage.
+// Returns -1 if failed and 0 if succeeded.
 int
 uvmalloc_super (pagetable_t pagetable, uint64 spgstart, int xperm)
 {
@@ -528,8 +532,8 @@ uvmalloc (pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   char *mem;
   uint64 a;
   int sz;
-  int debug_counter_superpg = 0;
-  int debug_counter_pg = 0;
+  // int debug_counter_superpg = 0;
+  // int debug_counter_pg = 0;
 
   if (newsz < oldsz)
     return oldsz;
@@ -548,8 +552,7 @@ uvmalloc (pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
             }
           sz = SUPERPGSIZE;
 
-          debug_counter_superpg++;
-
+          // debug_counter_superpg++;
           continue;
         }
 
@@ -570,7 +573,7 @@ uvmalloc (pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
           uvmdealloc (pagetable, a, oldsz);
           return 0;
         }
-      debug_counter_pg++;
+      // debug_counter_pg++;
     }
 
   // printf ("DEBUG: vm.c:uvmalloc(): Allocation and map complete! %d "

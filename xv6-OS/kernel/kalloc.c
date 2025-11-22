@@ -59,12 +59,12 @@ void
 freerange_super (void *pa_start, void *pa_end)
 {
   char *p;
-  int debug_counter = 0;
+  // int debug_counter = 0;
   p = (char *)SUPERPGROUNDUP ((uint64)pa_start);
   for (; p + SUPERPGSIZE <= (char *)pa_end; p += SUPERPGSIZE)
     {
       kfree_super (p);
-      debug_counter++;
+      // debug_counter++;
     }
   // printf ("DEBUG: kalloc.c:freerange_super(): %d superpage(s) from pa %p to
   // "
