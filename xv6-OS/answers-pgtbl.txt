@@ -1,3 +1,5 @@
+Inspect a user-process page table
+
 Output:
 
 print_pgtbl starting
@@ -76,3 +78,45 @@ va high to low (0x3FFFFFF000 - 0x3FFFFF6000)
 
 - Logical Meaning: Unused (unmapped memory, doesn't exist for now)
 - Permission: 0
+
+Speed up system calls
+
+uptime(): The number of timer ticks since boot could be stored in the shared page and updated by the timer interrupt handler. User programs could read it without a system call.
+
+getppid(): Parent process ID rarely changes, so it could be stored in the shared page.
+
+gettimeofday() (if implemented): Current time could be updated periodically in the shared page.
+
+getcpu() (if implemented): Which CPU core the process is running on could be stored and updated on context switches.
+
+Print a page table
+
+Question:
+
+For every leaf page in the vmprint output, 
+explain what it logically contains and what its permission bits are, 
+and how it relates to the output of the earlier print_pgtbl() exercise above.
+
+Figure 3.4 in the xv6 book might be helpful, 
+although note that the figure might have a slightly different set of pages than 
+the process that's being inspected here.
+
+Output:
+
+page table 0x0000000087f22000
+..0x0000000000000000: pte 0x0000000021fc7801 pa 0x0000000087f1e000
+.. ..0x0000000000000000: pte 0x0000000021fc7401 pa 0x0000000087f1d000
+.. .. ..0x0000000000000000: pte 0x0000000021fc7c5b pa 0x0000000087f1f000
+.. .. ..0x0000000000001000: pte 0x0000000021fc705b pa 0x0000000087f1c000
+.. .. ..0x0000000000002000: pte 0x0000000021fc6cd7 pa 0x0000000087f1b000
+.. .. ..0x0000000000003000: pte 0x0000000021fc6807 pa 0x0000000087f1a000
+.. .. ..0x0000000000004000: pte 0x0000000021fc64d7 pa 0x0000000087f19000
+..0xffffffffc0000000: pte 0x0000000021fc8401 pa 0x0000000087f21000
+.. ..0xffffffffffe00000: pte 0x0000000021fc8001 pa 0x0000000087f20000
+.. .. ..0xffffffffffffd000: pte 0x0000000021fd4853 pa 0x0000000087f52000
+.. .. ..0xffffffffffffe000: pte 0x0000000021fd00c7 pa 0x0000000087f40000
+.. .. ..0xfffffffffffff000: pte 0x000000002000184b pa 0x0000000080006000
+print_kpgtbl: OK
+
+Answer:
+

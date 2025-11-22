@@ -1,7 +1,0 @@
-uptime(): The number of timer ticks since boot could be stored in the shared page and updated by the timer interrupt handler. User programs could read it without a system call.
-
-getppid(): Parent process ID rarely changes, so it could be stored in the shared page.
-
-gettimeofday() (if implemented): Current time could be updated periodically in the shared page.
-
-getcpu() (if implemented): Which CPU core the process is running on could be stored and updated on context switches.
