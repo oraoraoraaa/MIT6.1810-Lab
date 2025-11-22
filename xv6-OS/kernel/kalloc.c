@@ -66,10 +66,11 @@ freerange_super (void *pa_start, void *pa_end)
       kfree_super (p);
       debug_counter++;
     }
-  printf ("DEBUG: kalloc.c:freerange_super(): %d superpage(s) from pa %p to "
-          "%p successfully added to "
-          "freelist.\n",
-          debug_counter, pa_start, pa_end);
+  // printf ("DEBUG: kalloc.c:freerange_super(): %d superpage(s) from pa %p to
+  // "
+  //         "%p successfully added to "
+  //         "freelist.\n",
+  //         debug_counter, pa_start, pa_end);
 }
 
 // Free the page of physical memory pointed at by pa,
