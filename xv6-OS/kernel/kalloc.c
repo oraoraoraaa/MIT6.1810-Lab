@@ -42,7 +42,7 @@ kinit ()
 {
   initlock (&kmem.lock, "kmem");
   initlock (&kmem_super.lock, "kmem_super");
-  freerange (end, (void *)SUPERSTART);
+  freerange (end, (void *)(SUPERSTART - PGSIZE));
   freerange_super ((void *)SUPERSTART, (void *)PHYSTOP);
 }
 
@@ -82,7 +82,7 @@ kfree (void *pa)
   struct run *r;
 
   if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end
-      || (uint64)pa >= SUPERSTART)
+      || (uint64)pa >= (SUPERSTART - PGSIZE))
     panic ("kfree");
 
   // Fill with junk to catch dangling refs.
@@ -96,6 +96,10 @@ kfree (void *pa)
   release (&kmem.lock);
 }
 
+// Free the superpage of physical memory pointed at by pa,
+// which normally should have been returned by a
+// call to kalloc_super().  (The exception is when
+// initializing the allocator; see kinit above.)
 void
 kfree_super (void *pa)
 {

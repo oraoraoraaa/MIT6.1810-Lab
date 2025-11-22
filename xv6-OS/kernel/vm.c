@@ -306,9 +306,9 @@ mappages_super (pagetable_t pagetable, uint64 va, uint64 size, uint64 pa,
       *pte_l1 = PA2PTE (pa) | perm | PTE_V | PTE_R;
 
       // printf (
-      //     "DEBUG: vm.c:mappages_super(): Map between va %p and pa %p success! "
-      //     "Level 1 pte address: %p, flag 0x%lx\n",
-      //     (void *)a, (void *)pa, (void *)pte_l1, PTE_FLAGS (*pte_l1));
+      //     "DEBUG: vm.c:mappages_super(): Map between va %p and pa %p
+      //     success! " "Level 1 pte address: %p, flag 0x%lx\n", (void *)a,
+      //     (void *)pa, (void *)pte_l1, PTE_FLAGS (*pte_l1));
 
       a += SUPERPGSIZE;
       pa += SUPERPGSIZE;
@@ -345,13 +345,83 @@ is_superpage (pagetable_t pagetable, uint64 va)
   return 0;
 }
 
+// Demote superpage to 512 normal pages when partially unmapped.
+// pte_l1 in va points to the actual 2MB memory chunk
+int
+superpg_demotion (pagetable_t pagetable, uint64 va)
+{
+
+  pte_t *pte_l1;
+  char *mem;
+
+  if ((pte_l1 = walk_super (pagetable, va, 0)) == 0)
+    panic ("superpg_demotion: unmapped superpage.");
+
+  uint64 va_start = (va & (~0x1FFFFF));
+  uint64 pa_start = PTE2PA (*pte_l1);
+  int flag = PTE_FLAGS (*pte_l1);
+
+  // printf ("DEBUG: vm.c:superpg_demotion(): Demoting superpage va %p, pte_l1
+  // "
+  //         "at %p, *pte_l1: %p starting va: %p\n",
+  //         (void *)va, (void *)pte_l1, (void *)*pte_l1, (void *)va_start);
+
+  *pte_l1 = 0;
+  uint64 va_r = va_start;
+  uint64 pa_r = pa_start;
+
+  int i = 0;
+
+  for (; i < 512; i++)
+    {
+      if ((mem = kalloc ()) == 0)
+        {
+          // printf ("DEBUG: vm.c:superpg_demotion(): failed when allocating "
+          //         "memory for number %d page from bottom. va %p\n",
+          //         i, (void *)mem);
+          goto err;
+        }
+
+      // printf ("DEBUG: vm.c:superpg_demotion(): page successfully allocated "
+      //         "for va %p at pa %p\n",
+      //         (void *)va_r, (void *)pa_r);
+
+      if (mappages (pagetable, va_r, PGSIZE, (uint64)mem, flag) != 0)
+        {
+          // printf ("DEBUG: vm.c:superpg_demotion(): failed when mapping va %p
+          // "
+          //         "to pa %p\n",
+          //         (void *)va_r, (void *)pa_r);
+          goto err;
+        }
+
+      memmove (mem, (void *)pa_r, PGSIZE);
+      va_r += PGSIZE;
+      pa_r += PGSIZE;
+    }
+
+  kfree_super ((void *)pa_start);
+
+  // printf ("DEBUG: vm.c:superpg_demotion(): Demotion complete! New root
+  // pte_l0 "
+  //         "at %p. Falling back to "
+  //         "normal page unmapping\n",
+  //         (void *)walk (pagetable, va, 0));
+  return 0;
+
+err:
+  uvmunmap (pagetable, va_start, i, 1);
+  return -1;
+}
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. It's OK if the mappings don't exist.
 // Optionally free the physical memory.
 void
 uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
-  // printf ("DEBUG: vm.c:uvmunmap(): pid %d unmapping %ld pages starting from "
+  // printf ("DEBUG: vm.c:uvmunmap(): pid %d unmapping %ld pages starting from
+  // "
   //         "va %p, do_free: %d\n",
   //         myproc ()->pid, npages, (void *)va, do_free);
 
@@ -365,10 +435,13 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   if ((va % PGSIZE) != 0)
     panic ("uvmunmap: not aligned");
 
-  for (a = va; a < va + npages * PGSIZE; a += sz)
+  uint64 upper_limit = va + npages * PGSIZE;
+
+  for (a = va; a < upper_limit; a += sz)
     {
       // check if current address is mapped to a superpage
-      if (is_superpage (pagetable, a))
+      // superpage full unmapping
+      if (is_superpage (pagetable, a) && (upper_limit - a) >= SUPERPGSIZE)
         {
           sz = SUPERPGSIZE;
           pte = walk_super (pagetable, a, 0);
@@ -384,6 +457,12 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
           *pte = 0;
           // debug_counter_superpg++;
           continue;
+        }
+      // superpage partial unmapping
+      else if (is_superpage (pagetable, a) && (upper_limit - a) < SUPERPGSIZE)
+        {
+          if (superpg_demotion (pagetable, a) != 0)
+            panic ("uvmunmap: superpage demotion failed");
         }
 
       // regular page unmapping
@@ -443,8 +522,8 @@ uvmalloc_super (pagetable_t pagetable, uint64 spgstart, int xperm)
 uint64
 uvmalloc (pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 {
-  printf ("DEBUG: vm.c:uvmalloc(): pid %d requiring %p to %p, sz %ld.\n",
-          myproc ()->pid, (void *)oldsz, (void *)newsz, (newsz - oldsz));
+  // printf ("DEBUG: vm.c:uvmalloc(): pid %d requiring %p to %p, sz %ld.\n",
+  //         myproc ()->pid, (void *)oldsz, (void *)newsz, (newsz - oldsz));
 
   char *mem;
   uint64 a;
@@ -494,9 +573,9 @@ uvmalloc (pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
       debug_counter_pg++;
     }
 
-  printf ("DEBUG: vm.c:uvmalloc(): Allocation and map complete! %d "
-          "superpage(s) and %d regular page(s) are allocated.\n",
-          debug_counter_superpg, debug_counter_pg);
+  // printf ("DEBUG: vm.c:uvmalloc(): Allocation and map complete! %d "
+  //         "superpage(s) and %d regular page(s) are allocated.\n",
+  //         debug_counter_superpg, debug_counter_pg);
 
   return newsz;
 }
@@ -564,12 +643,13 @@ uvmfree (pagetable_t pagetable, uint64 sz)
 int
 uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
 {
-  printf ("DEBUG: vm.c:uvmcopy(): pid %d copying pagetable from pa %p to %p, "
-          "proc size %ld, passed sz %ld\n",
-          myproc ()->pid, (void *)old, (void *)new, myproc ()->sz, sz);
+  // printf ("DEBUG: vm.c:uvmcopy(): pid %d copying pagetable from pa %p to %p,
+  // "
+  //         "proc size %ld, passed sz %ld\n",
+  //         myproc ()->pid, (void *)old, (void *)new, myproc ()->sz, sz);
 
-  int debug_counter_superpg = 0;
-  int debug_counter_pg = 0;
+  // int debug_counter_superpg = 0;
+  // int debug_counter_pg = 0;
 
   pte_t *pte;
   uint64 pa, i;
@@ -595,7 +675,7 @@ uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
               kfree_super (mem);
               goto err;
             }
-          debug_counter_superpg++;
+          // debug_counter_superpg++;
           continue;
         }
 
@@ -617,12 +697,12 @@ uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
           kfree (mem);
           goto err;
         }
-      debug_counter_pg++;
+      // debug_counter_pg++;
     }
 
-  printf ("DEBUG: vm.c:uvmcopy(): Success! Copied %d superpage(s) and %d "
-          "regular page(s) to new pagetable.\n",
-          debug_counter_superpg, debug_counter_pg);
+  // printf ("DEBUG: vm.c:uvmcopy(): Success! Copied %d superpage(s) and %d "
+  //         "regular page(s) to new pagetable.\n",
+  //         debug_counter_superpg, debug_counter_pg);
   return 0;
 
 err:
