@@ -18,6 +18,7 @@ OBJS = \
   $K/swtch.o \
   $K/trampoline.o \
   $K/trap.o \
+  $K/sysalarm.o \
   $K/syscall.o \
   $K/sysproc.o \
   $K/bio.o \
@@ -223,7 +224,8 @@ ifeq ($(LAB),traps)
 UPROGS += \
 	$U/_call\
 	$U/_bttest\
-	$U/_test
+	$U/_test\
+	$U/_alarmtest
 endif
 
 ifeq ($(LAB),lazy)
