@@ -36,5 +36,11 @@ sys_sigalarm (void)
 uint64
 sys_sigreturn (void)
 {
-  return 0;
+  struct proc *p = myproc ();
+  *(p->trapframe) = p->saved_trapframe;
+  p->alarm_tick_remaining = p->alarm_tick;
+  prepare_return ();
+
+  p->alarm_lock = 0;
+  return p->trapframe->a0;
 }

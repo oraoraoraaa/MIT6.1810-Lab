@@ -77,11 +77,21 @@ usertrap (void)
             {
               p->alarm_tick_remaining--; // pass
             }
-          else
+          else if (p->alarm_tick_remaining == 0 && p->alarm_lock == 0)
             {
+              // preserve entire trapframe
+              p->saved_trapframe = *(p->trapframe);
+
+              // activate lock
+              p->alarm_lock = 1;
+
               // call handler
               p->trapframe->epc = p->alarm_handler;
               p->alarm_tick_remaining = p->alarm_tick;
+            }
+          else
+            {
+              p->alarm_tick_remaining = p->alarm_tick; // reset remaining ticks
             }
         }
       else

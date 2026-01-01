@@ -117,7 +117,10 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
+  // alarm
   int alarm_tick;
   int alarm_tick_remaining;
   uint64 alarm_handler;
+  struct trapframe saved_trapframe;
+  int alarm_lock;
 };

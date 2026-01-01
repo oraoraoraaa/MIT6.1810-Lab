@@ -152,6 +152,7 @@ found:
   p->alarm_tick_remaining = -1;
   p->alarm_handler = -1;
   p->alarm_tick = -1;
+  p->alarm_lock = 0;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
