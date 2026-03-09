@@ -211,10 +211,16 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
         continue;
       if ((*pte & PTE_V) == 0) // has physical page been allocated?
         continue;
+      uint64 pa = PTE2PA (*pte);
       if (do_free)
         {
-          uint64 pa = PTE2PA (*pte);
-          kfree ((void *)pa);
+          kfree (
+              (void *)
+                  pa); // kfree decrements REFCOUNT and frees if it reaches 0
+        }
+      else
+        {
+          REFCOUNT[PA2INDEX (pa)]--; // drop reference without freeing
         }
       *pte = 0;
     }
@@ -336,8 +342,10 @@ uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
       // if ((mem = kalloc ()) == 0)
       //   goto err;
       // memmove (mem, (char *)pa, PGSIZE);
-      if (mappages (new, i, PGSIZE, (uint64)pa, flags) != 0)
+      if (mappages (new, i, PGSIZE, pa, flags) != 0)
         goto err;
+
+      REFCOUNT[PA2INDEX (pa)]++;
     }
   return 0;
 
@@ -385,6 +393,14 @@ copyout (pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
         }
 
       pte = walk (pagetable, va0, 0);
+
+      if (*pte & PTE_COW)
+        {
+          // is a cow pte
+          if ((pa0 = vmfault (pagetable, va0, 0)) == 0)
+            return -1;
+        }
+
       // forbid copyout over read-only user text pages.
       if ((*pte & PTE_W) == 0)
         return -1;
@@ -498,26 +514,38 @@ vmfault (pagetable_t pagetable, uint64 va, int read)
     return 0;
   va = PGROUNDDOWN (va);
 
-  if ((pte = walk (pagetable, va, 0)) == 0)
-    return 0;
-  if ((*pte & PTE_V) && (*pte & PTE_COW) && !(*pte & PTE_W))
+  pte = walk (pagetable, va, 0);
+
+  if (pte != 0 && (*pte & PTE_V) && (*pte & PTE_COW) && !(*pte & PTE_W))
     {
       // is a COW fork page fault
       uint64 pa = PTE2PA (*pte);
-      uint flag = (PTE_FLAGS (*pte) & ~PTE_COW) | PTE_W;
 
-      if ((mem = (uint64)kalloc ()) == 0)
-        return 0;
-      memset ((void *)mem, 0, PGSIZE);
-      memmove ((char *)mem, (char *)pa, PGSIZE);
-
-      uvmunmap (pagetable, va, 1, 0);
-      if (mappages (pagetable, va, PGSIZE, mem, flag) != 0)
+      // optimization: if the page only has 1 reference count
+      if (REFCOUNT[PA2INDEX (pa)] == 1)
         {
-          kfree ((void *)mem);
-          return 0;
+          *pte = (*pte & ~PTE_COW) | PTE_W;
+          return pa;
         }
-      return mem;
+      else
+        {
+          uint flag = (PTE_FLAGS (*pte) & ~PTE_COW)
+                      | PTE_W; // clear COW flag and set write flag
+
+          if ((mem = (uint64)kalloc ()) == 0)
+            return 0;
+          memset ((void *)mem, 0, PGSIZE);
+          memmove ((char *)mem, (char *)pa, PGSIZE);
+
+          uvmunmap (pagetable, va, 1, 1);
+          if (mappages (pagetable, va, PGSIZE, mem, flag)
+              != 0) // va now mapped to a new page writable
+            {
+              kfree ((void *)mem);
+              return 0;
+            }
+          return mem;
+        }
     }
   else
     {
