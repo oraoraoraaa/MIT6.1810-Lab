@@ -10,6 +10,7 @@
 #include "defs.h"
 
 uint REFCOUNT[(PHYSTOP - KERNBASE) / PGSIZE] = { 0 };
+struct spinlock reflock;
 
 void freerange (void *pa_start, void *pa_end);
 
@@ -31,6 +32,7 @@ void
 kinit ()
 {
   initlock (&kmem.lock, "kmem");
+  initlock (&reflock, "refcount");
   freerange (end, (void *)PHYSTOP);
 }
 
@@ -62,8 +64,13 @@ kfree (void *pa)
   // Decrement reference count; only free when it reaches zero.
   // This also handles page-table pages freed by freewalk(), which call
   // kfree() directly without a prior REFCOUNT decrement.
+  acquire (&reflock);
   if (--REFCOUNT[PA2INDEX ((uint64)pa)] > 0)
-    return;
+    {
+      release (&reflock);
+      return;
+    }
+  release (&reflock);
 
   // Fill with junk to catch dangling refs.
   memset (pa, 1, PGSIZE);
@@ -92,8 +99,10 @@ kalloc (void)
 
   if (r)
     {
-      memset ((char *)r, 5, PGSIZE);      // fill with junk
+      memset ((char *)r, 5, PGSIZE); // fill with junk
+      acquire (&reflock);
       REFCOUNT[PA2INDEX ((uint64)r)] = 1; // reference count set to 1
+      release (&reflock);
     }
   return (void *)r;
 }

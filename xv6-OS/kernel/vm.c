@@ -220,7 +220,9 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
         }
       else
         {
+          acquire (&reflock);
           REFCOUNT[PA2INDEX (pa)]--; // drop reference without freeing
+          release (&reflock);
         }
       *pte = 0;
     }
@@ -338,6 +340,8 @@ uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
       if (*pte & PTE_W)
         *pte = (*pte | PTE_COW) & ~PTE_W;
 
+      sfence_vma ();
+
       flags = PTE_FLAGS (*pte);
       // if ((mem = kalloc ()) == 0)
       //   goto err;
@@ -345,7 +349,9 @@ uvmcopy (pagetable_t old, pagetable_t new, uint64 sz)
       if (mappages (new, i, PGSIZE, pa, flags) != 0)
         goto err;
 
+      acquire (&reflock);
       REFCOUNT[PA2INDEX (pa)]++;
+      release (&reflock);
     }
   return 0;
 
@@ -518,23 +524,37 @@ vmfault (pagetable_t pagetable, uint64 va, int read)
 
   if (pte != 0 && (*pte & PTE_V) && (*pte & PTE_COW) && !(*pte & PTE_W))
     {
+      if (!(*pte & PTE_U))
+        return 0; // not a user page (e.g. guard page), kill the process
       // is a COW fork page fault
       uint64 pa = PTE2PA (*pte);
 
+      if (read)
+        {
+          // is a read cow fault, set the read flag again
+          *pte = *pte | PTE_R;
+          sfence_vma ();
+          return pa;
+        }
+
       // optimization: if the page only has 1 reference count
+      acquire (&reflock);
       if (REFCOUNT[PA2INDEX (pa)] == 1)
         {
+          release (&reflock);
           *pte = (*pte & ~PTE_COW) | PTE_W;
+          sfence_vma ();
           return pa;
         }
       else
         {
+          release (&reflock);
           uint flag = (PTE_FLAGS (*pte) & ~PTE_COW)
                       | PTE_W; // clear COW flag and set write flag
 
           if ((mem = (uint64)kalloc ()) == 0)
             return 0;
-          memset ((void *)mem, 0, PGSIZE);
+
           memmove ((char *)mem, (char *)pa, PGSIZE);
 
           uvmunmap (pagetable, va, 1, 1);
