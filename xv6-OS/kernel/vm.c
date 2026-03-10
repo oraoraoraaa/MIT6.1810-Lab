@@ -218,7 +218,7 @@ uvmunmap (pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
               (void *)
                   pa); // kfree decrements REFCOUNT and frees if it reaches 0
         }
-      else
+      else if (*pte & PTE_COW)
         {
           acquire (&reflock);
           REFCOUNT[PA2INDEX (pa)]--; // drop reference without freeing
@@ -506,9 +506,9 @@ copyinstr (pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 }
 
 // allocate and map user memory if process is referencing a page
-// that was lazily allocated in sys_sbrk().
-// returns 0 if va is invalid or already mapped, or if
-// out of physical memory, and physical address if successful.
+// that was lazily allocated in sys_sbrk() or cow forked in uvmcopy().
+// returns 0 if va is invalid, or if out of physical memory,
+// and physical address if successful.
 uint64
 vmfault (pagetable_t pagetable, uint64 va, int read)
 {
@@ -526,6 +526,7 @@ vmfault (pagetable_t pagetable, uint64 va, int read)
     {
       if (!(*pte & PTE_U))
         return 0; // not a user page (e.g. guard page), kill the process
+
       // is a COW fork page fault
       uint64 pa = PTE2PA (*pte);
 
@@ -553,7 +554,7 @@ vmfault (pagetable_t pagetable, uint64 va, int read)
                       | PTE_W; // clear COW flag and set write flag
 
           if ((mem = (uint64)kalloc ()) == 0)
-            return 0;
+            return 0; // no free physical memory
 
           memmove ((char *)mem, (char *)pa, PGSIZE);
 
@@ -576,7 +577,7 @@ vmfault (pagetable_t pagetable, uint64 va, int read)
         }
       mem = (uint64)kalloc ();
       if (mem == 0)
-        return 0;
+        return 0; // no free physical memory
       memset ((void *)mem, 0, PGSIZE);
       if (mappages (p->pagetable, va, PGSIZE, mem, PTE_W | PTE_U | PTE_R) != 0)
         {
